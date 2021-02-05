@@ -387,7 +387,7 @@ var getJibProfilesCommon = function (input, data) {
     // on such hardware.
     if (input.build_cpu == "sparcv9") {
        var cpu_brand = $EXEC("bash -c \"kstat -m cpu_info | grep brand | head -n1 | awk '{ print \$2 }'\"");
-       if (cpu_brand.trim().match('SPARC-.7')) {
+       if (cpu_brand.trim().match('SPARC-.[78]')) {
            boot_jdk_revision = "8u20";
            boot_jdk_subdirpart = "1.8.0_20";
        }
@@ -814,41 +814,84 @@ var getJibProfilesProfiles = function (input, common, data) {
             }
         },
 
-        "windows-x86-open": {
+        "macosx-x64-open": {
             artifacts: {
                 jdk: {
                     local: "bundles/\\(jdk.*bin.tar.gz\\)",
                     remote: [
-                        "bundles/openjdk/GPL/windows-x86/jdk-" + data.version
-                            + "_windows-x86_bin.tar.gz",
-                        "bundles/openjdk/GPL/windows-x86/\\1"
+                        "bundles/openjdk/GPL/osx-x64/jdk-" + data.version
+                            + "_osx-x64_bin.tar.gz",
+                        "bundles/openjdk/GPL/osx-x64/\\1"
                     ],
                     subdir: "jdk-" + data.version
                 },
                 jre: {
                     local: "bundles/\\(jre.*bin.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/windows-x86/\\1"
+                    remote: "bundles/openjdk/GPL/osx-x64/\\1",
                 },
                 test: {
                     local: "bundles/\\(jdk.*bin-tests.tar.gz\\)",
                     remote: [
-                        "bundles/openjdk/GPL/windows-x86/jdk-" + data.version
-                            + "_windows-x86_bin-tests.tar.gz",
-                        "bundles/openjdk/GPL/windows-x86/\\1"
+                        "bundles/openjdk/GPL/osx-x64/jdk-" + data.version
+                            + "_osx-x64_bin-tests.tar.gz",
+                        "bundles/openjdk/GPL/osx-x64/\\1"
                     ]
                 },
                 jdk_symbols: {
                     local: "bundles/\\(jdk.*bin-symbols.tar.gz\\)",
                     remote: [
-                        "bundles/openjdk/GPL/windows-x86/jdk-" + data.version
-                            + "_windows-x86_bin-symbols.tar.gz",
-                        "bundles/openjdk/GPL/windows-x86/\\1"
+                        "bundles/openjdk/GPL/osx-x64/jdk-" + data.version
+                            + "_osx-x64_bin-symbols.tar.gz",
+                        "bundles/openjdk/GPL/osx-x64/\\1"
                     ],
                     subdir: "jdk-" + data.version
                 },
                 jre_symbols: {
                     local: "bundles/\\(jre.*bin-symbols.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/windows-x86/\\1",
+                    remote: "bundles/openjdk/GPL/osx-x64/\\1",
+                },
+                doc_api_spec: {
+                    local: "bundles/\\(jdk.*doc-api-spec.tar.gz\\)",
+                    remote: "bundles/openjdk/GPL/osx-x64/\\1",
+                },
+            }
+        },
+
+        "windows-x64-open": {
+            artifacts: {
+                jdk: {
+                    local: "bundles/\\(jdk.*bin.tar.gz\\)",
+                    remote: [
+                        "bundles/openjdk/GPL/windows-x64/jdk-" + data.version
+                            + "_windows-x64_bin.tar.gz",
+                        "bundles/openjdk/GPL/windows-x64/\\1"
+                    ],
+                    subdir: "jdk-" + data.version
+                },
+                jre: {
+                    local: "bundles/\\(jre.*bin.tar.gz\\)",
+                    remote: "bundles/openjdk/GPL/windows-x64/\\1"
+                },
+                test: {
+                    local: "bundles/\\(jdk.*bin-tests.tar.gz\\)",
+                    remote: [
+                        "bundles/openjdk/GPL/windows-x64/jdk-" + data.version
+                            + "_windows-x64_bin-tests.tar.gz",
+                        "bundles/openjdk/GPL/windows-x64/\\1"
+                    ]
+                },
+                jdk_symbols: {
+                    local: "bundles/\\(jdk.*bin-symbols.tar.gz\\)",
+                    remote: [
+                        "bundles/openjdk/GPL/windows-x64/jdk-" + data.version
+                            + "_windows-x64_bin-symbols.tar.gz",
+                        "bundles/openjdk/GPL/windows-x64/\\1"
+                    ],
+                    subdir: "jdk-" + data.version
+                },
+                jre_symbols: {
+                    local: "bundles/\\(jre.*bin-symbols.tar.gz\\)",
+                    remote: "bundles/openjdk/GPL/windows-x64/\\1",
                 }
             }
         },
@@ -880,10 +923,11 @@ var getJibProfilesProfiles = function (input, common, data) {
     profiles["linux-x64-ri"] = clone(profiles["linux-x64-open"]);
     profiles["linux-x86-ri"] = clone(profiles["linux-x86-open"]);
     profiles["linux-x86-ri-debug"] = clone(profiles["linux-x86-open-debug"]);
-    profiles["windows-x86-ri"] = clone(profiles["windows-x86-open"]);
+    profiles["macosx-x64-ri"] = clone(profiles["macosx-x64-open"]);
+    profiles["windows-x64-ri"] = clone(profiles["windows-x64-open"]);
 
     // Generate artifacts for ri profiles
-    [ "linux-x64-ri", "linux-x86-ri", "linux-x86-ri-debug", "windows-x86-ri" ]
+    [ "linux-x64-ri", "linux-x86-ri", "linux-x86-ri-debug", "macosx-x64-ri", "windows-x64-ri" ]
         .forEach(function (name) {
             // Rewrite all remote dirs to "bundles/openjdk/BCL/..."
             for (artifactName in profiles[name].artifacts) {
@@ -895,10 +939,10 @@ var getJibProfilesProfiles = function (input, common, data) {
 
     // The windows ri profile needs to add the freetype license file
     profilesRiFreetype = {
-        "windows-x86-ri": {
+        "windows-x64-ri": {
             configure_args: "--with-freetype-license="
                 + input.get("freetype", "install_path")
-                + "/freetype-2.7.1-v120-x86/freetype.md"
+                + "/freetype-2.7.1-v120-x64/freetype.md"
         }
     };
     profiles = concatObjects(profiles, profilesRiFreetype);
@@ -1200,7 +1244,7 @@ var versionArgs = function(input, common) {
     if (input.build_type == "promoted") {
         args = concat(args,
                       // This needs to be changed when we start building release candidates
-                      "--with-version-pre=ea",
+                      "--with-version-pre=fcs",
                       "--without-version-opt");
     } else {
         args = concat(args, "--with-version-opt=" + common.build_id);
