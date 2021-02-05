@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.security.cert.*;
 import sun.net.util.URLUtil;
+import sun.security.util.IOUtils;
 
 /**
  *
@@ -560,6 +561,7 @@ public class CodeSource implements java.io.Serializable {
     {
         CertificateFactory cf;
         Hashtable<String, CertificateFactory> cfs = null;
+        List<java.security.cert.Certificate> certList = null;
 
         ois.defaultReadObject(); // location
 
@@ -569,7 +571,9 @@ public class CodeSource implements java.io.Serializable {
             // we know of 3 different cert types: X.509, PGP, SDSI, which
             // could all be present in the stream at the same time
             cfs = new Hashtable<>(3);
-            this.certs = new java.security.cert.Certificate[size];
+            certList = new ArrayList<>(size > 20 ? 20 : size);
+        } else if (size < 0) {
+            throw new IOException("size cannot be negative");
         }
 
         for (int i = 0; i < size; i++) {
@@ -591,22 +595,20 @@ public class CodeSource implements java.io.Serializable {
                 cfs.put(certType, cf);
             }
             // parse the certificate
-            byte[] encoded = null;
-            try {
-                encoded = new byte[ois.readInt()];
-            } catch (OutOfMemoryError oome) {
-                throw new IOException("Certificate too big");
-            }
-            ois.readFully(encoded);
+            byte[] encoded = IOUtils.readNBytes(ois, ois.readInt());
             ByteArrayInputStream bais = new ByteArrayInputStream(encoded);
             try {
-                this.certs[i] = cf.generateCertificate(bais);
+                certList.add(cf.generateCertificate(bais));
             } catch (CertificateException ce) {
                 throw new IOException(ce.getMessage());
             }
             bais.close();
         }
 
+        if (certList != null) {
+            this.certs = certList.toArray(
+                    new java.security.cert.Certificate[size]);
+        }
         // Deserialize array of code signers (if any)
         try {
             this.signers = ((CodeSigner[])ois.readObject()).clone();
